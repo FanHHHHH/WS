@@ -10,9 +10,9 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 //     HttpResponse::Ok().body(req_body)
 // }
 
-async fn manual_hello() -> impl Responder {
-    HttpResponse::Ok().body("Hey there!")
-}
+// async fn manual_hello() -> impl Responder {
+//     HttpResponse::Ok().body("Hey there!")
+// }
 
 // 配置 route
 pub fn general_routes(cfg: &mut web::ServiceConfig) {
