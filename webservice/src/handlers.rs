@@ -35,7 +35,50 @@ pub async fn new_course(
     };
 
     app_state.courses.lock().unwrap().push(new_course);
-    HttpResponse::Ok().json("添加新课程成功！")
+    HttpResponse::Ok().json("添加新课程成功！".to_string())
+}
+
+pub async fn get_courses_for_teacher(
+    app_state: web::Data<AppState>,
+    params: web::Path<usize>,
+) -> HttpResponse {
+    let teacher_id: usize = params.0;
+
+    let filtered_coruses = app_state
+        .courses
+        .lock()
+        .unwrap()
+        .clone()
+        .into_iter()
+        .filter(|course| course.teacher_id == teacher_id)
+        .collect::<Vec<Course>>();
+
+    if filtered_coruses.len() > 0 {
+        HttpResponse::Ok().json(filtered_coruses)
+    } else {
+        HttpResponse::Ok().json("找不到该老师的课程".to_string())
+    }
+}
+
+pub async fn get_course_detail(
+    app_state: web::Data<AppState>,
+    params: web::Path<(usize, usize)>,
+) -> HttpResponse {
+    let (teacher_id, course_id) = params.0;
+    let selected_course = app_state
+        .courses
+        .lock()
+        .unwrap()
+        .clone()
+        .into_iter()
+        .find(|x| x.teacher_id == teacher_id && x.id == Some(course_id))
+        .ok_or("课程未找到");
+
+    if let Ok(course) = selected_course {
+        HttpResponse::Ok().json(course)
+    } else {
+        HttpResponse::Ok().json("课程未找到！".to_string())
+    }
 }
 
 #[cfg(test)]
@@ -55,9 +98,35 @@ mod tests {
         let app_state = web::Data::new(AppState {
             health_check_response: "".to_string(),
             visit_count: Mutex::new(0),
-            courses: Mutex::new(vec![])
+            courses: Mutex::new(vec![]),
         });
         let resp = new_course(course, app_state).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[actix_rt::test]
+    async fn get_all_courses_success() {
+        let app_state: web::Data<AppState> = web::Data::new(AppState {
+            health_check_response: "".to_string(),
+            visit_count: Mutex::new(0),
+            courses: Mutex::new(vec![]),
+        });
+
+        let teacher_id = web::Path::from(1);
+        let resp = get_courses_for_teacher(app_state, teacher_id).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[actix_rt::test]
+    async fn get_one_course_success() {
+        let app_state = web::Data::new(AppState {
+            health_check_response: "".to_string(),
+            visit_count: Mutex::new(0),
+            courses: Mutex::new(vec![]),
+        });
+
+        let params = web::Path::from((1, 1));
+        let resp = get_course_detail(app_state, params).await;
         assert_eq!(resp.status(), StatusCode::OK);
     }
 }
