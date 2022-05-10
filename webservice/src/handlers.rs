@@ -18,87 +18,100 @@ pub async fn new_course(
     app_state: web::Data<AppState>,
 ) -> HttpResponse {
     println!("发现新课程");
-    let course_count = app_state
-        .courses
-        .lock()
-        .unwrap()
-        .clone()
-        .into_iter()
-        .filter(|course| course.teacher_id == new_course.teacher_id)
-        .collect::<Vec<Course>>()
-        .len();
-    let new_course = Course {
-        teacher_id: new_course.teacher_id,
-        id: Some(course_count + 1),
-        name: new_course.name.clone(),
-        time: Some(Utc::now().naive_utc()),
-    };
+    // let course_count = app_state
+    //     .db
+    //     .lock()
+    //     .unwrap()
+    //     .clone()
+    //     .into_iter()
+    //     .filter(|course| course.teacher_id == new_course.teacher_id)
+    //     .collect::<Vec<Course>>()
+    //     .len();
+    // let new_course = Course {
+    //     teacher_id: new_course.teacher_id,
+    //     id: Some(course_count + 1),
+    //     name: new_course.name.clone(),
+    //     time: Some(Utc::now().naive_utc()),
+    // };
 
-    app_state.courses.lock().unwrap().push(new_course);
-    HttpResponse::Ok().json("添加新课程成功！".to_string())
+    // app_state.courses.lock().unwrap().push(new_course);
+    HttpResponse::Ok().json("添加新课程成功!".to_string())
 }
 
 pub async fn get_courses_for_teacher(
     app_state: web::Data<AppState>,
-    params: web::Path<usize>,
+    params: web::Path<(usize,)>,
 ) -> HttpResponse {
-    let teacher_id: usize = params.0;
+    // let teacher_id: usize = params.0;
 
-    let filtered_coruses = app_state
-        .courses
-        .lock()
-        .unwrap()
-        .clone()
-        .into_iter()
-        .filter(|course| course.teacher_id == teacher_id)
-        .collect::<Vec<Course>>();
+    // let filtered_coruses = app_state
+    //     .courses
+    //     .lock()
+    //     .unwrap()
+    //     .clone()
+    //     .into_iter()
+    //     .filter(|course| course.teacher_id == teacher_id)
+    //     .collect::<Vec<Course>>();
 
-    if filtered_coruses.len() > 0 {
-        HttpResponse::Ok().json(filtered_coruses)
-    } else {
-        HttpResponse::Ok().json("找不到该老师的课程".to_string())
-    }
+    // if filtered_coruses.len() > 0 {
+    //     HttpResponse::Ok().json(filtered_coruses)
+    // } else {
+    //     HttpResponse::Ok().json("找不到该老师的课程".to_string())
+    // }
+    HttpResponse::Ok().json("Success".to_string())
 }
 
 pub async fn get_course_detail(
     app_state: web::Data<AppState>,
     params: web::Path<(usize, usize)>,
 ) -> HttpResponse {
-    let (teacher_id, course_id) = params.0;
-    let selected_course = app_state
-        .courses
-        .lock()
-        .unwrap()
-        .clone()
-        .into_iter()
-        .find(|x| x.teacher_id == teacher_id && x.id == Some(course_id))
-        .ok_or("课程未找到");
+    // let (teacher_id, course_id) = params.0;
+    // let selected_course = app_state
+    //     .courses
+    //     .lock()
+    //     .unwrap()
+    //     .clone()
+    //     .into_iter()
+    //     .find(|x| x.teacher_id == teacher_id && x.id == Some(course_id))
+    //     .ok_or("课程未找到");
 
-    if let Ok(course) = selected_course {
-        HttpResponse::Ok().json(course)
-    } else {
-        HttpResponse::Ok().json("课程未找到！".to_string())
-    }
+    // if let Ok(course) = selected_course {
+    //     HttpResponse::Ok().json(course)
+    // } else {
+    //     HttpResponse::Ok().json("课程未找到！".to_string())
+    // }
+    HttpResponse::Ok().json("Success")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use actix_web::http::StatusCode;
+    use dotenv::dotenv;
+    use sqlx::mysql::MySqlPoolOptions;
+    use std::env;
     use std::sync::Mutex;
 
     #[actix_rt::test]
     async fn post_course_test() {
+        dotenv().ok();
+        let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
+        let db_pool = MySqlPoolOptions::new()
+            .max_connections(5)
+            .connect(&db_url)
+            .await
+            .unwrap();
+        let app_state = web::Data::new(AppState {
+            health_check_response: "".to_string(),
+            visit_count: Mutex::new(0),
+            // courses: Mutex::new(vec![]),
+            db: db_pool,
+        });
         let course = web::Json(Course {
             teacher_id: 1,
             name: "Test course".into(),
             id: None,
             time: None,
-        });
-        let app_state = web::Data::new(AppState {
-            health_check_response: "".to_string(),
-            visit_count: Mutex::new(0),
-            courses: Mutex::new(vec![]),
         });
         let resp = new_course(course, app_state).await;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -106,23 +119,39 @@ mod tests {
 
     #[actix_rt::test]
     async fn get_all_courses_success() {
-        let app_state: web::Data<AppState> = web::Data::new(AppState {
+        dotenv().ok();
+        let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
+        let db_pool = MySqlPoolOptions::new()
+            .max_connections(5)
+            .connect(&db_url)
+            .await
+            .unwrap();
+        let app_state = web::Data::new(AppState {
             health_check_response: "".to_string(),
             visit_count: Mutex::new(0),
-            courses: Mutex::new(vec![]),
+            // courses: Mutex::new(vec![]),
+            db: db_pool,
         });
 
-        let teacher_id = web::Path::from(1);
+        let teacher_id: web::Path<(usize,)> = web::Path::from((1,));
         let resp = get_courses_for_teacher(app_state, teacher_id).await;
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[actix_rt::test]
     async fn get_one_course_success() {
+        dotenv().ok();
+        let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
+        let db_pool = MySqlPoolOptions::new()
+            .max_connections(5)
+            .connect(&db_url)
+            .await
+            .unwrap();
         let app_state = web::Data::new(AppState {
             health_check_response: "".to_string(),
             visit_count: Mutex::new(0),
-            courses: Mutex::new(vec![]),
+            // courses: Mutex::new(vec![]),
+            db: db_pool,
         });
 
         let params = web::Path::from((1, 1));
