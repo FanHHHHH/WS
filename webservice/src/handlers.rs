@@ -1,3 +1,4 @@
+use super::db_access;
 use crate::state::AppState;
 use actix_web::{web, HttpResponse, Responder};
 
@@ -18,69 +19,28 @@ pub async fn new_course(
     app_state: web::Data<AppState>,
 ) -> HttpResponse {
     println!("发现新课程");
-    // let course_count = app_state
-    //     .db
-    //     .lock()
-    //     .unwrap()
-    //     .clone()
-    //     .into_iter()
-    //     .filter(|course| course.teacher_id == new_course.teacher_id)
-    //     .collect::<Vec<Course>>()
-    //     .len();
-    // let new_course = Course {
-    //     teacher_id: new_course.teacher_id,
-    //     id: Some(course_count + 1),
-    //     name: new_course.name.clone(),
-    //     time: Some(Utc::now().naive_utc()),
-    // };
-
-    // app_state.courses.lock().unwrap().push(new_course);
-    HttpResponse::Ok().json("添加新课程成功!".to_string())
+    let course = db_access::post_new_course_db(&app_state.db, new_course.into()).await;
+    HttpResponse::Ok().json(course)
 }
 
 pub async fn get_courses_for_teacher(
     app_state: web::Data<AppState>,
     params: web::Path<(usize,)>,
 ) -> HttpResponse {
-    // let teacher_id: usize = params.0;
-
-    // let filtered_coruses = app_state
-    //     .courses
-    //     .lock()
-    //     .unwrap()
-    //     .clone()
-    //     .into_iter()
-    //     .filter(|course| course.teacher_id == teacher_id)
-    //     .collect::<Vec<Course>>();
-
-    // if filtered_coruses.len() > 0 {
-    //     HttpResponse::Ok().json(filtered_coruses)
-    // } else {
-    //     HttpResponse::Ok().json("找不到该老师的课程".to_string())
-    // }
-    HttpResponse::Ok().json("Success".to_string())
+    let courses =
+        db_access::get_courses_for_teacher_db(&app_state.db, i32::try_from(params.0).unwrap())
+            .await;
+    HttpResponse::Ok().json(courses)
 }
 
 pub async fn get_course_detail(
     app_state: web::Data<AppState>,
     params: web::Path<(usize, usize)>,
 ) -> HttpResponse {
-    // let (teacher_id, course_id) = params.0;
-    // let selected_course = app_state
-    //     .courses
-    //     .lock()
-    //     .unwrap()
-    //     .clone()
-    //     .into_iter()
-    //     .find(|x| x.teacher_id == teacher_id && x.id == Some(course_id))
-    //     .ok_or("课程未找到");
-
-    // if let Ok(course) = selected_course {
-    //     HttpResponse::Ok().json(course)
-    // } else {
-    //     HttpResponse::Ok().json("课程未找到！".to_string())
-    // }
-    HttpResponse::Ok().json("Success")
+    let teacher_id = i32::try_from(params.0).unwrap();
+    let course_id = i32::try_from(params.1).unwrap();
+    let course = db_access::get_course_details_db(&app_state.db, teacher_id, course_id).await;
+    HttpResponse::Ok().json(course)
 }
 
 #[cfg(test)]
@@ -114,6 +74,7 @@ mod tests {
             time: None,
         });
         let resp = new_course(course, app_state).await;
+        println!("resp:{:#?}", resp);
         assert_eq!(resp.status(), StatusCode::OK);
     }
 

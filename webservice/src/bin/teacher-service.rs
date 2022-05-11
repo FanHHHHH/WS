@@ -5,17 +5,16 @@ use std::env;
 use std::io;
 use std::sync::Mutex;
 
+#[path = "../db_access.rs"]
+mod db_access;
 #[path = "../handlers.rs"]
 mod handlers;
-
-#[path = "../routers.rs"]
-mod routers;
-
-#[path = "../state.rs"]
-mod state;
-
 #[path = "../models.rs"]
 mod models;
+#[path = "../routers.rs"]
+mod routers;
+#[path = "../state.rs"]
+mod state;
 
 use routers::*;
 use state::AppState;
