@@ -34,3 +34,8 @@ Actix 支持两类并发
 - 为自定义错误类型实现 ResponseError Trait
 - 在 handler 里返回自定义错误类型
 - Actix 把错误转换为 HTTP 相应
+
+## 重构
+
+- 更改目录结构
+- 增加功能

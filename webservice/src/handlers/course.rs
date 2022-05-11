@@ -1,18 +1,9 @@
-use super::db_access;
-use super::errors::MyError;
+use crate::db_access::course;
+use crate::errors::MyError;
 use crate::state::AppState;
 use actix_web::{web, HttpResponse, Responder};
 
-pub async fn health_check_handler(app_state: web::Data<AppState>) -> impl Responder {
-    let health_check_response = &app_state.health_check_response;
-    let mut visit_count = app_state.visit_count.lock().unwrap();
-
-    let response = format!("{} {} times", health_check_response, visit_count);
-    *visit_count += 1;
-    HttpResponse::Ok().json(&response)
-}
-
-use super::models::Course;
+use crate::models::course::Course;
 use chrono::Utc;
 
 pub async fn new_course(
@@ -20,7 +11,7 @@ pub async fn new_course(
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, MyError> {
     println!("发现新课程");
-    db_access::post_new_course_db(&app_state.db, new_course.into())
+    course::post_new_course_db(&app_state.db, new_course.into())
         .await
         .map(|course| HttpResponse::Ok().json(course))
 }
@@ -29,7 +20,7 @@ pub async fn get_courses_for_teacher(
     app_state: web::Data<AppState>,
     params: web::Path<(usize,)>,
 ) -> Result<HttpResponse, MyError> {
-    db_access::get_courses_for_teacher_db(&app_state.db, i32::try_from(params.0).unwrap())
+    course::get_courses_for_teacher_db(&app_state.db, i32::try_from(params.0).unwrap())
         .await
         .map(|course| HttpResponse::Ok().json(course))
 }
@@ -40,7 +31,7 @@ pub async fn get_course_detail(
 ) -> Result<HttpResponse, MyError> {
     let teacher_id = i32::try_from(params.0).unwrap();
     let course_id = i32::try_from(params.1).unwrap();
-    db_access::get_course_details_db(&app_state.db, teacher_id, course_id)
+    course::get_course_details_db(&app_state.db, teacher_id, course_id)
         .await
         .map(|course| HttpResponse::Ok().json(course))
     // HttpResponse::Ok().json(course)
