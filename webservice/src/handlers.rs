@@ -1,4 +1,5 @@
 use super::db_access;
+use super::errors::MyError;
 use crate::state::AppState;
 use actix_web::{web, HttpResponse, Responder};
 
@@ -17,30 +18,32 @@ use chrono::Utc;
 pub async fn new_course(
     new_course: web::Json<Course>,
     app_state: web::Data<AppState>,
-) -> HttpResponse {
+) -> Result<HttpResponse, MyError> {
     println!("发现新课程");
-    let course = db_access::post_new_course_db(&app_state.db, new_course.into()).await;
-    HttpResponse::Ok().json(course)
+    db_access::post_new_course_db(&app_state.db, new_course.into())
+        .await
+        .map(|course| HttpResponse::Ok().json(course))
 }
 
 pub async fn get_courses_for_teacher(
     app_state: web::Data<AppState>,
     params: web::Path<(usize,)>,
-) -> HttpResponse {
-    let courses =
-        db_access::get_courses_for_teacher_db(&app_state.db, i32::try_from(params.0).unwrap())
-            .await;
-    HttpResponse::Ok().json(courses)
+) -> Result<HttpResponse, MyError> {
+    db_access::get_courses_for_teacher_db(&app_state.db, i32::try_from(params.0).unwrap())
+        .await
+        .map(|course| HttpResponse::Ok().json(course))
 }
 
 pub async fn get_course_detail(
     app_state: web::Data<AppState>,
     params: web::Path<(usize, usize)>,
-) -> HttpResponse {
+) -> Result<HttpResponse, MyError> {
     let teacher_id = i32::try_from(params.0).unwrap();
     let course_id = i32::try_from(params.1).unwrap();
-    let course = db_access::get_course_details_db(&app_state.db, teacher_id, course_id).await;
-    HttpResponse::Ok().json(course)
+    db_access::get_course_details_db(&app_state.db, teacher_id, course_id)
+        .await
+        .map(|course| HttpResponse::Ok().json(course))
+    // HttpResponse::Ok().json(course)
 }
 
 #[cfg(test)]
@@ -73,8 +76,8 @@ mod tests {
             id: None,
             time: None,
         });
-        let resp = new_course(course, app_state).await;
-        println!("resp:{:#?}", resp);
+        let resp = new_course(course, app_state).await.unwrap();
+        // println!("resp:{:#?}", resp);
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
@@ -95,7 +98,9 @@ mod tests {
         });
 
         let teacher_id: web::Path<(usize,)> = web::Path::from((1,));
-        let resp = get_courses_for_teacher(app_state, teacher_id).await;
+        let resp = get_courses_for_teacher(app_state, teacher_id)
+            .await
+            .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
@@ -116,7 +121,7 @@ mod tests {
         });
 
         let params = web::Path::from((1, 1));
-        let resp = get_course_detail(app_state, params).await;
+        let resp = get_course_detail(app_state, params).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
 }
