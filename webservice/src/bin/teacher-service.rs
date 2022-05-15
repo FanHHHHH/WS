@@ -18,6 +18,7 @@ mod routers;
 #[path = "../state.rs"]
 mod state;
 
+use errors::MyError;
 use routers::*;
 use state::AppState;
 
@@ -42,8 +43,12 @@ async fn main() -> io::Result<()> {
     let app = move || {
         App::new()
             .app_data(shared_data.clone())
+            .app_data(web::JsonConfig::default().error_handler(|_err, _req| {
+                MyError::InvalidInput("请提供合法输入！".into()).into()
+            }))
             .configure(general_routes)
             .configure(courses_routes)
+            .configure(teacher_routes)
     };
 
     HttpServer::new(app).bind("localhost:3000")?.run().await

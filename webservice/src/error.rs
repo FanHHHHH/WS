@@ -1,4 +1,4 @@
-use actix_web::{error, http::StatusCode, HttpResponse, Result};
+use actix_web::{error, http::StatusCode, web, HttpResponse, Result};
 use serde::Serialize;
 use sqlx::error::Error as SQLxError;
 use std::fmt;
@@ -8,27 +8,32 @@ pub enum MyError {
     DBError(String),
     ActixError(String),
     NotFound(String),
+    InvalidInput(String),
 }
 
 #[derive(Debug, Serialize)]
 pub struct MyErrorResponse {
-    err_message: String,
+    err_message: web::Json<String>,
 }
 
 impl MyError {
-    fn error_response(&self) -> String {
+    fn error_response(&self) -> web::Json<String> {
         match self {
             MyError::DBError(msg) => {
                 println!("数据库出现错误：{}", msg);
-                "数据库错误！".to_string()
+                web::Json("数据库错误！".to_string())
             }
             MyError::ActixError(msg) => {
                 println!("服务器内部错误：{}", msg);
-                "服务器内部错误！".to_string()
+                web::Json("服务器内部错误！".to_string())
             }
             MyError::NotFound(msg) => {
                 println!("服务未找到：{}", msg);
-                msg.to_string()
+                web::Json(msg.to_string())
+            }
+            MyError::InvalidInput(msg) => {
+                println!("非法输入：{}", msg);
+                web::Json("非法输入！".to_string())
             }
         }
     }
@@ -37,8 +42,9 @@ impl MyError {
 impl error::ResponseError for MyError {
     fn status_code(&self) -> StatusCode {
         match self {
-            MyError::DBError(msg) | MyError::ActixError(msg) => StatusCode::INTERNAL_SERVER_ERROR,
-            MyError::NotFound(msg) => StatusCode::NOT_FOUND,
+            MyError::DBError(_msg) | MyError::ActixError(_msg) => StatusCode::INTERNAL_SERVER_ERROR,
+            MyError::NotFound(_msg) => StatusCode::NOT_FOUND,
+            MyError::InvalidInput(_msg) => StatusCode::BAD_REQUEST,
         }
     }
 

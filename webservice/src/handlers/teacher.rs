@@ -1,63 +1,53 @@
-use crate::db_access::course;
+use crate::db_access::teacher::*;
 use crate::errors::MyError;
+use crate::models::teacher::*;
 use crate::state::AppState;
 use actix_web::{web, HttpResponse, ResponseError};
 
-use crate::models::course::*;
-
-pub async fn post_new_course(
-    new_course: web::Json<CreateCourse>,
+pub async fn post_new_teacher(
+    new_teacher: web::Json<CreateTeacher>,
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, MyError> {
-    course::post_new_course_db(&app_state.db, new_course.try_into()?)
+    post_new_teacher_db(&app_state.db, new_teacher.try_into()?)
         .await
-        .map(|course| HttpResponse::Ok().json(course))
+        .map(|teacher| HttpResponse::Ok().json(teacher))
 }
 
-pub async fn get_courses_for_teacher(
-    app_state: web::Data<AppState>,
-    params: web::Path<(i32,)>,
-) -> Result<HttpResponse, MyError> {
-    course::get_courses_for_teacher_db(&app_state.db, i32::try_from(params.0).unwrap())
-        .await
-        .map(|course| HttpResponse::Ok().json(course))
+pub async fn get_all_teachers(app_state: web::Data<AppState>) -> Result<HttpResponse, MyError> {
+    let teachers = get_all_teachers_db(&app_state.db).await?;
+    Ok(HttpResponse::Ok().json(teachers))
 }
 
-pub async fn get_course_detail(
+pub async fn get_teacher_details(
     app_state: web::Data<AppState>,
-    params: web::Path<(i32, i32)>,
+    params: web::Path<i32>,
 ) -> Result<HttpResponse, MyError> {
-    let (teacher_id, course_id) = params.into_inner();
-    course::get_course_details_db(&app_state.db, teacher_id, course_id)
+    let id = params.into_inner();
+    get_teacher_details_db(&app_state.db, id)
         .await
         .map(|course| HttpResponse::Ok().json(course))
     // HttpResponse::Ok().json(course)
 }
 
-pub async fn delete_course(
+pub async fn delete_teacher(
     app_state: web::Data<AppState>,
-    params: web::Path<(i32, i32)>,
+    params: web::Path<i32>,
 ) -> Result<HttpResponse, MyError> {
-    let (teacher_id, course_id) = params.into_inner();
-    course::delete_course_db(&app_state.db, teacher_id, course_id)
+    let id = params.into_inner();
+    delete_teacher_db(&app_state.db, id)
         .await
         .map(|res| HttpResponse::Ok().json(res))
 }
 
-pub async fn update_course_details(
+pub async fn update_teacher_details(
     app_state: web::Data<AppState>,
-    update_course: web::Json<UpdateCourse>,
-    params: web::Path<(i32, i32)>,
+    update_teacher: web::Json<UpdateTeacher>,
+    params: web::Path<i32>,
 ) -> Result<HttpResponse, MyError> {
-    let (teacher_id, course_id) = params.into_inner();
-    course::update_course_details_db(
-        &app_state.db,
-        teacher_id,
-        course_id,
-        update_course.try_into()?,
-    )
-    .await
-    .map(|id| HttpResponse::Ok().json(id))
+    let id = params.into_inner();
+    update_teacher_details_db(&app_state.db, id, update_teacher.try_into()?)
+        .await
+        .map(|id| HttpResponse::Ok().json(id))
 }
 #[cfg(test)]
 mod tests {
@@ -70,7 +60,7 @@ mod tests {
 
     #[ignore]
     #[actix_rt::test]
-    async fn post_course_test() {
+    async fn post_teacher_test() {
         dotenv().ok();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
         let db_pool = MySqlPoolOptions::new().connect(&db_url).await.unwrap();
@@ -80,24 +70,18 @@ mod tests {
             // courses: Mutex::new(vec![]),
             db: db_pool,
         });
-        let course = web::Json(CreateCourse {
-            teacher_id: 1,
-            name: Some("Test course".into()),
-            description: Some("this is a course".into()),
-            format: None,
-            structure: None,
-            duration: None,
-            price: None,
-            language: Some("中文".into()),
-            level: Some("Beginner".into()),
+        let new_teacher = web::Json(CreateTeacher {
+            name: "Test Teacher".into(),
+            picture_url: Some("www.test_url.com".into()),
+            profile: Some("test profile".into()),
         });
-        let resp = post_new_course(course, app_state).await.unwrap();
+        let resp = post_new_teacher(new_teacher, app_state).await.unwrap();
         // println!("resp:{:#?}", resp);
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[actix_rt::test]
-    async fn get_all_courses_success() {
+    async fn get_all_teachers_success() {
         dotenv().ok();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
         let db_pool = MySqlPoolOptions::new().connect(&db_url).await.unwrap();
@@ -108,15 +92,12 @@ mod tests {
             db: db_pool,
         });
 
-        let teacher_id: web::Path<(i32,)> = web::Path::from((1,));
-        let resp = get_courses_for_teacher(app_state, teacher_id)
-            .await
-            .unwrap();
+        let resp = get_all_teachers(app_state).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[actix_rt::test]
-    async fn get_one_course_success() {
+    async fn get_one_teacher_success() {
         dotenv().ok();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
         let db_pool = MySqlPoolOptions::new().connect(&db_url).await.unwrap();
@@ -127,13 +108,13 @@ mod tests {
             db: db_pool,
         });
 
-        let params = web::Path::from((1, 1));
-        let resp = get_course_detail(app_state, params).await.unwrap();
+        let params = web::Path::from(2);
+        let resp = get_teacher_details(app_state, params).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[actix_rt::test]
-    async fn get_one_course_fail() {
+    async fn get_one_teacher_fail() {
         dotenv().ok();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
         let db_pool = MySqlPoolOptions::new().connect(&db_url).await.unwrap();
@@ -144,8 +125,8 @@ mod tests {
             db: db_pool,
         });
 
-        let params = web::Path::from((1, 101));
-        let resp = get_course_detail(app_state, params).await;
+        let params = web::Path::from(10001);
+        let resp = get_teacher_details(app_state, params).await;
 
         match resp {
             Ok(_) => println!("出错了"),
@@ -154,7 +135,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn update_course_details_test() {
+    async fn update_teacher_details_test() {
         dotenv().ok();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
         let db_pool = MySqlPoolOptions::new().connect(&db_url).await.unwrap();
@@ -164,27 +145,21 @@ mod tests {
             // courses: Mutex::new(vec![]),
             db: db_pool,
         });
-        let update_course = web::Json(UpdateCourse {
-            name: Some("course name changed".into()),
-            description: Some("updated course".into()),
-            format: None,
-            structure: None,
-            duration: None,
-            price: None,
-            language: Some("中文".into()),
-            level: Some("medium".into()),
+        let update_teacher = web::Json(UpdateTeacher {
+            name: Some("updatea teacher name test".into()),
+            picture_url: Some("updated pic url test".into()),
+            profile: Some("update profile test".into()),
         });
 
-        let params = web::Path::from((1, 1));
-        let resp = update_course_details(app_state, update_course, params)
+        let params = web::Path::from(2);
+        let resp = update_teacher_details(app_state, update_teacher, params)
             .await
             .unwrap();
-        // println!("resp:{:#?}", resp);
         assert_eq!(resp.status(), StatusCode::OK);
     }
     #[ignore]
     #[actix_rt::test]
-    async fn delete_course_success() {
+    async fn delete_teacher_success() {
         dotenv().ok();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
         let db_pool = MySqlPoolOptions::new().connect(&db_url).await.unwrap();
@@ -195,12 +170,12 @@ mod tests {
             db: db_pool,
         });
 
-        let params = web::Path::from((1, 3));
-        let resp = delete_course(app_state, params).await.unwrap();
+        let params = web::Path::from(1);
+        let resp = delete_teacher(app_state, params).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
     #[actix_rt::test]
-    async fn delete_course_fail() {
+    async fn delete_teacher_fail() {
         dotenv().ok();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not valid.");
         let db_pool = MySqlPoolOptions::new().connect(&db_url).await.unwrap();
@@ -211,8 +186,8 @@ mod tests {
             db: db_pool,
         });
 
-        let params = web::Path::from((1, 101));
-        let resp = delete_course(app_state, params).await;
+        let params = web::Path::from(100001);
+        let resp = delete_teacher(app_state, params).await;
         match resp {
             Ok(_) => println!("删除出错！"),
             Err(err) => assert_eq!(err.status_code(), StatusCode::NOT_FOUND),
