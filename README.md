@@ -39,3 +39,26 @@ Actix 支持两类并发
 
 - 更改目录结构
 - 增加功能
+
+# WASM 应用开发
+
+![wasmapp.png](./wasmapp.png)
+[tutorial](https://rustwasm.github.io/docs/book/)
+
+[教程](http://llever.com/rustwasm-book/)
+
+- Assembly(汇编语言)
+  - Assembly（接近机器码） ---ASSEMBLER--> maching code（机器码、计算机可直接执行）
+  - 不同 CPU 架构需要不同机器码
+  - 高级语言可以翻译成不同机器码
+- WebAssembly
+  - 伪汇编语言，针对浏览器
+  - 中间编译器目标
+  - 文件格式
+    - 文本格式 .wat
+    - 二进制格式 .wasm
+- WASM 主要目标
+  - 将 rust\c\c++等编译成 wasm 模块
+  - Web 应用通过 JS 调用 wasm 模块
+  - wasm 一般无法直接访问浏览器 API（DOM， WebGL...）     
+    ![wasmprocess.png](./wasm_process.png)
